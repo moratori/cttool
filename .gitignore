@@ -1,3 +1,4 @@
 Pipfile.lock
 *.pyc
 .venv/
+test/data/
