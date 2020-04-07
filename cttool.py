@@ -49,7 +49,7 @@ class Application:
     def monitor(self, logserver, timeout=5, interval=10, jsonflg=False,
                 start=None, end=None):
         ctclient = CTclient(logserver, timeout)
-        if start and end:
+        if start is not None and end is not None:
             self._summarize_certificate(logserver, timeout, start, end,
                                         jsonflg)
         else:
@@ -58,8 +58,8 @@ class Application:
                     before = ctclient.get_sth()
                     time.sleep(interval)
                     after = ctclient.get_sth()
-                    if not (before and "tree_size" in before and
-                            after and "tree_size" in after):
+                    if not (before is not None and "tree_size" in before and
+                            after is not None and "tree_size" in after):
                         print("unable to get tree_size", file=sys.stderr)
                         break
                     else:
@@ -74,13 +74,13 @@ class Application:
     def sth(self, logserver, timeout=5):
         ctclient = CTclient(logserver, timeout)
         ret = ctclient.get_sth()
-        if ret:
+        if ret is not None:
             print(json.dumps(ret, indent=4, sort_keys=True))
 
     def logs(self, timeout=5):
         logs_list = "https://www.gstatic.com/ct/log_list/v2/all_logs_list.json"
         ret = get_url(logs_list, timeout)
-        if ret and "operators" in ret:
+        if ret is not None and "operators" in ret:
             for operator in ret["operators"]:
                 if "logs" in operator:
                     for log in operator["logs"]:
@@ -116,12 +116,14 @@ class CTclient:
         ret = get_url(url, self.timeout, params=params)
 
         result = []
-        if ret and ("entries" in ret):
+        if ret is not None and ("entries" in ret):
             for entry in ret["entries"]:
                 try:
                     precert_flag, pem, cert = \
                         self.parse_entry_to_certificate(entry)
-                    if precert_flag and pem and cert:
+                    if (precert_flag is not None and
+                            pem is not None and
+                            cert is not None):
                         result.append((precert_flag, pem, cert))
                 except Exception:
                     continue
