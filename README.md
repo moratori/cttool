@@ -57,4 +57,10 @@ $ ./cttool.py roots https://ct.googleapis.com/testtube
 
 # Installtion
 
-TBD
+please check whether pipenv and python3.7 installed
+
+```
+$ git clone https://github.com/moratori/cttool.git
+$ cd cttool
+$ pipenv install
+```
