@@ -132,32 +132,16 @@ class CTclient:
                   file=sys.stderr)
         return result
 
-    def check_precertificate(self, leaf_input):
-        PRECERT_ENTRY = 1
-        try:
-            with io.BytesIO(base64.b64decode(leaf_input)) as handle:
-                int.from_bytes(handle.read(1), "big")  # version
-                int.from_bytes(handle.read(1), "big")  # leaf_type
-                int.from_bytes(handle.read(8), "big")  # timestamp
-                log_entry_type = int.from_bytes(handle.read(2), "big")
-                return log_entry_type == PRECERT_ENTRY
-        except Exception:
-            print("unable to determine log entry type",
-                  file=sys.stderr)
-            return None
-
-    def parse_cert(self, extra_data):
+    def parse_first_found_cert_in_tls_encoded_data(self, bytes_data):
         CERT_LENGTH_SIZE = 3
         DER_SEQUENCE_TAG = 48
         try:
-            extra_data_bytes = base64.b64decode(extra_data)
             while True:
-                size = int.from_bytes(extra_data_bytes[0:CERT_LENGTH_SIZE],
+                size = int.from_bytes(bytes_data[0:CERT_LENGTH_SIZE],
                                       "big")
-                extra_data_bytes = extra_data_bytes[CERT_LENGTH_SIZE:
-                                                    CERT_LENGTH_SIZE+size]
-                if extra_data_bytes[0] == DER_SEQUENCE_TAG:
-                    data = extra_data_bytes
+                bytes_data = bytes_data[CERT_LENGTH_SIZE:CERT_LENGTH_SIZE+size]
+                if bytes_data[0] == DER_SEQUENCE_TAG:
+                    data = bytes_data
                     break
 
             data = base64.b64encode(data).decode("utf8")
@@ -165,21 +149,47 @@ class CTclient:
             pem = (dlm % data)
             cert = x509.load_pem_x509_certificate(pem.encode("utf8"),
                                                   default_backend())
-
             return data, cert
         except Exception as ex:
             print(str(ex), file=sys.stderr)
+            print(pem, file=sys.stderr)
             return None, None
 
     def parse_entry_to_certificate(self, entry):
+        X509_ENTRY = 0
+        PRECERT_ENTRY = 1
 
-        leaf_input = entry["leaf_input"]
-        extra_data = entry["extra_data"]
+        precert_flag = data = cert = None
 
-        precert_flag = self.check_precertificate(leaf_input)
-        pem, cert = self.parse_cert(extra_data)
+        leaf_input = base64.b64decode(entry["leaf_input"])
+        extra_data = base64.b64decode(entry["extra_data"])
 
-        return precert_flag, pem, cert
+        try:
+            with io.BytesIO(leaf_input) as handle:
+                version = int.from_bytes(handle.read(1), "big")
+                mercle_leaf_type = int.from_bytes(handle.read(1), "big")
+                timestamp = int.from_bytes(handle.read(8), "big")
+                log_entry_type = int.from_bytes(handle.read(2), "big")
+                rest_of_data = handle.read()
+
+                if log_entry_type == PRECERT_ENTRY:
+                    precert_flag = True
+                    data, cert = \
+                        self.parse_first_found_cert_in_tls_encoded_data(
+                            extra_data)
+                elif log_entry_type == X509_ENTRY:
+                    precert_flag = False
+                    data, cert = \
+                        self.parse_first_found_cert_in_tls_encoded_data(
+                            rest_of_data)
+                else:
+                    print("unknown log entry type", file=sys.stderr)
+
+        except Exception as ex:
+            print(str(ex), file=sys.stderr)
+            print("unable to get certificate", file=sys.stderr)
+
+        return precert_flag, data, cert
 
 
 if __name__ == "__main__":
