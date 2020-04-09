@@ -3,37 +3,32 @@
 import io
 import base64
 import time
-import json
 import sys
 import urllib.parse
 import fire
 import requests
+import json as jsn
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 
 
-def get_url(url, timeout, params=dict()):
+def get_json_from_url(url, timeout, params=dict()):
     try:
         res = requests.get(url, params=params, timeout=timeout)
         content_type = res.headers["content-type"]
-        if (res.status_code != 200):
+        if (res.status_code != 200 or
+                (not content_type.startswith("application/json") and
+                 not content_type.startswith("text/plain"))):
             return None
         return res.json()
     except Exception as ex:
         print(str(ex), file=sys.stderr)
         return None
 
-def get_cert_object_from_der(der):
-    data = base64.b64encode(der).decode("utf8")
-    dlm = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----"
-    pem = (dlm % data)
-    cert = x509.load_pem_x509_certificate(pem.encode("utf8"),
-                                          default_backend())
-    return cert
 
 class Application:
 
-    def _summarize_certificate(self, logserver, timeout, start, end, jsonflg):
+    def _summarize_certificate(self, logserver, timeout, start, end, json):
         ctclient = CTclient(logserver, timeout)
         result = []
         for (flag, pem, cert) in ctclient.get_certificates(start, end):
@@ -45,19 +40,19 @@ class Application:
                         subject=cert.subject.rfc4514_string(),
                         pem=pem)
             result.append(line)
-            if not jsonflg:
+            if not json:
                 tmp = line.copy()
                 del tmp["pem"]
                 print("\t".join([str(column) for column in tmp.values()]))
-        if jsonflg:
-            print(json.dumps(result, indent=4, sort_keys=True))
+        if json:
+            print(jsn.dumps(result, indent=4, sort_keys=True))
 
-    def monitor(self, logserver, timeout=5, interval=10, jsonflg=False,
+    def monitor(self, logserver, timeout=5, interval=10, json=False,
                 start=None, end=None):
         ctclient = CTclient(logserver, timeout)
         if start is not None and end is not None:
             self._summarize_certificate(logserver, timeout, start, end,
-                                        jsonflg)
+                                        json)
         else:
             try:
                 while True:
@@ -73,7 +68,7 @@ class Application:
                         end = after["tree_size"]
                         if end > start:
                             self._summarize_certificate(logserver, timeout,
-                                                        start, end, jsonflg)
+                                                        start, end, json)
             except KeyboardInterrupt:
                 pass
 
@@ -81,11 +76,11 @@ class Application:
         ctclient = CTclient(logserver, timeout)
         ret = ctclient.get_sth()
         if ret is not None:
-            print(json.dumps(ret, indent=4, sort_keys=True))
+            print(jsn.dumps(ret, indent=4, sort_keys=True))
 
     def logs(self, timeout=5):
         logs_list = "https://www.gstatic.com/ct/log_list/v2/all_logs_list.json"
-        ret = get_url(logs_list, timeout)
+        ret = get_json_from_url(logs_list, timeout)
         if ret is not None and "operators" in ret:
             for operator in ret["operators"]:
                 if "logs" in operator:
@@ -103,6 +98,15 @@ class Application:
                 continue
 
 
+def get_cert_object_from_der(der):
+    data = base64.b64encode(der).decode("ascii")
+    dlm = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----"
+    pem = (dlm % data)
+    cert = x509.load_pem_x509_certificate(pem.encode("ascii"),
+                                          default_backend())
+    return cert
+
+
 class CTclient:
 
     GET_STH = "ct/v1/get-sth"
@@ -116,7 +120,7 @@ class CTclient:
     def get_sth(self):
         url = urllib.parse.urljoin(self.logserver,
                                    CTclient.GET_STH)
-        ret = get_url(url, self.timeout)
+        ret = get_json_from_url(url, self.timeout)
         if ret is None:
             print("unable to get tree size", file=sys.stderr)
         return ret
@@ -124,7 +128,7 @@ class CTclient:
     def get_roots(self):
         url = urllib.parse.urljoin(self.logserver,
                                    CTclient.GET_ROOTS)
-        ret = get_url(url, self.timeout)
+        ret = get_json_from_url(url, self.timeout)
         result = []
         if ret is None or "certificates" not in ret:
             print("unable to get root certificates", file=sys.stderr)
@@ -135,62 +139,54 @@ class CTclient:
                     cert = get_cert_object_from_der(base64.b64decode(root))
                     result.append(cert)
                 except Exception as ex:
-                    pass
+                    continue
             return result
 
     def get_certificates(self, startsize, endsize):
         url = urllib.parse.urljoin(self.logserver,
                                    CTclient.GET_ENTRIES)
         params = dict(start=startsize, end=endsize)
-        ret = get_url(url, self.timeout, params=params)
+        ret = get_json_from_url(url, self.timeout, params=params)
 
         result = []
         if ret is not None and ("entries" in ret):
             for entry in ret["entries"]:
-                try:
-                    precert_flag, pem, cert = \
-                        self.parse_entry_to_certificate(entry)
-                    if (precert_flag is not None and
-                            pem is not None and
-                            cert is not None):
-                        result.append((precert_flag, pem, cert))
-                except Exception:
-                    continue
+                precert_flag, pem, cert = \
+                    self.parse_entry_to_certificate(entry)
+                if not (precert_flag is None or pem is None or cert is None):
+                    result.append((precert_flag, pem, cert))
         else:
             print("data from log is None or \"entries\" key is not in data",
                   file=sys.stderr)
         return result
 
-    def parse_first_found_cert_in_tls_encoded_data(self, bytes_data):
+    def _parse_first_found_cert_in_tls_encoded_data(self, bytes_data):
         CERT_LENGTH_SIZE = 3
         DER_SEQUENCE_TAG = 48
-        try:
-            while True:
-                size = int.from_bytes(bytes_data[0:CERT_LENGTH_SIZE],
-                                      "big")
-                bytes_data = bytes_data[CERT_LENGTH_SIZE:CERT_LENGTH_SIZE+size]
-                if bytes_data[0] == DER_SEQUENCE_TAG:
-                    data = bytes_data
-                    break
 
-            cert = get_cert_object_from_der(data)
+        while True:
+            size = int.from_bytes(bytes_data[0:CERT_LENGTH_SIZE],
+                                  "big")
+            bytes_data = bytes_data[CERT_LENGTH_SIZE:CERT_LENGTH_SIZE+size]
+            if bytes_data[0] == DER_SEQUENCE_TAG:
+                data = bytes_data
+                break
 
-            return data, cert
-        except Exception as ex:
-            print(str(ex), file=sys.stderr)
-            print(pem, file=sys.stderr)
-            return None, None
+        cert = get_cert_object_from_der(data)
+
+        return data, cert
 
     def parse_entry_to_certificate(self, entry):
         X509_ENTRY = 0
         PRECERT_ENTRY = 1
 
-        precert_flag = data = cert = None
-
-        leaf_input = base64.b64decode(entry["leaf_input"])
-        extra_data = base64.b64decode(entry["extra_data"])
+        precert_flag = pem = cert = None
 
         try:
+
+            leaf_input = base64.b64decode(entry["leaf_input"])
+            extra_data = base64.b64decode(entry["extra_data"])
+
             with io.BytesIO(leaf_input) as handle:
                 version = int.from_bytes(handle.read(1), "big")
                 mercle_leaf_type = int.from_bytes(handle.read(1), "big")
@@ -200,22 +196,26 @@ class CTclient:
 
                 if log_entry_type == PRECERT_ENTRY:
                     precert_flag = True
-                    data, cert = \
-                        self.parse_first_found_cert_in_tls_encoded_data(
-                            extra_data)
+                    target_data = extra_data
                 elif log_entry_type == X509_ENTRY:
                     precert_flag = False
-                    data, cert = \
-                        self.parse_first_found_cert_in_tls_encoded_data(
-                            rest_of_data)
+                    target_data = rest_of_data
                 else:
                     print("unknown log entry type", file=sys.stderr)
+                    precert_flag = False
+                    target_data = b''
+
+                rawdata, cert = \
+                    self._parse_first_found_cert_in_tls_encoded_data(
+                        target_data)
+
+                pem = base64.b64encode(rawdata).decode("ascii")
 
         except Exception as ex:
             print(str(ex), file=sys.stderr)
             print("unable to get certificate", file=sys.stderr)
 
-        return precert_flag, data, cert
+        return precert_flag, pem, cert
 
 
 if __name__ == "__main__":
