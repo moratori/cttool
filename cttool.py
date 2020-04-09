@@ -16,14 +16,20 @@ def get_url(url, timeout, params=dict()):
     try:
         res = requests.get(url, params=params, timeout=timeout)
         content_type = res.headers["content-type"]
-        if (res.status_code != 200 or
-                not content_type.startswith("application/json")):
+        if (res.status_code != 200):
             return None
         return res.json()
     except Exception as ex:
         print(str(ex), file=sys.stderr)
         return None
 
+def get_cert_object_from_der(der):
+    data = base64.b64encode(der).decode("utf8")
+    dlm = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----"
+    pem = (dlm % data)
+    cert = x509.load_pem_x509_certificate(pem.encode("utf8"),
+                                          default_backend())
+    return cert
 
 class Application:
 
@@ -88,7 +94,13 @@ class Application:
                                             log["url"]))
 
     def roots(self, logserver, timeout=5):
-        pass
+        ctclient = CTclient(logserver, timeout)
+        for root in ctclient.get_roots():
+            try:
+                print(root.issuer.rfc4514_string())
+            except Exception as ex:
+                print(str(ex), file=sys.stderr)
+                continue
 
 
 class CTclient:
@@ -108,6 +120,23 @@ class CTclient:
         if ret is None:
             print("unable to get tree size", file=sys.stderr)
         return ret
+
+    def get_roots(self):
+        url = urllib.parse.urljoin(self.logserver,
+                                   CTclient.GET_ROOTS)
+        ret = get_url(url, self.timeout)
+        result = []
+        if ret is None or "certificates" not in ret:
+            print("unable to get root certificates", file=sys.stderr)
+            return result
+        else:
+            for root in ret["certificates"]:
+                try:
+                    cert = get_cert_object_from_der(base64.b64decode(root))
+                    result.append(cert)
+                except Exception as ex:
+                    pass
+            return result
 
     def get_certificates(self, startsize, endsize):
         url = urllib.parse.urljoin(self.logserver,
@@ -144,11 +173,8 @@ class CTclient:
                     data = bytes_data
                     break
 
-            data = base64.b64encode(data).decode("utf8")
-            dlm = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----"
-            pem = (dlm % data)
-            cert = x509.load_pem_x509_certificate(pem.encode("utf8"),
-                                                  default_backend())
+            cert = get_cert_object_from_der(data)
+
             return data, cert
         except Exception as ex:
             print(str(ex), file=sys.stderr)
