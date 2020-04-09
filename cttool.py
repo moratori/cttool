@@ -8,8 +8,17 @@ import urllib.parse
 import fire
 import requests
 import json as jsn
+from logging import StreamHandler, basicConfig, getLogger
+from logging import WARNING
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
+
+
+basicConfig(format="%(asctime)s [%(levelname)s] %(name)s %(funcName)s %(message)s",
+            level=WARNING,
+            handlers=[StreamHandler(stream=sys.stderr)])
+
+LOGGER = getLogger(__name__)
 
 
 def get_json_from_url(url, timeout, params=dict()):
@@ -22,7 +31,8 @@ def get_json_from_url(url, timeout, params=dict()):
             return None
         return res.json()
     except Exception as ex:
-        print(str(ex), file=sys.stderr)
+        LOGGER.error("exception occurred: %s" % str(ex))
+        LOGGER.error("unable to get json data from %s" % url)
         return None
 
 
@@ -47,7 +57,7 @@ class Application:
         if json:
             print(jsn.dumps(result, indent=4, sort_keys=True))
 
-    def monitor(self, logserver, timeout=5, interval=10, json=False,
+    def monitor(self, logserver, timeout=3, interval=5, json=False,
                 start=None, end=None):
         ctclient = CTclient(logserver, timeout)
         if start is not None and end is not None:
@@ -61,7 +71,9 @@ class Application:
                     after = ctclient.get_sth()
                     if not (before is not None and "tree_size" in before and
                             after is not None and "tree_size" in after):
-                        print("unable to get tree_size", file=sys.stderr)
+                        LOGGER.error("unable to get tree_size from STH")
+                        LOGGER.debug("before: %s" % str(before))
+                        LOGGER.debug("after: %s" % str(after))
                         break
                     else:
                         start = before["tree_size"]
@@ -94,7 +106,8 @@ class Application:
             try:
                 print(root.issuer.rfc4514_string())
             except Exception as ex:
-                print(str(ex), file=sys.stderr)
+                LOGGER.error("exception occurred: %s" % str(ex))
+                LOGGER.error("unable to convert issuer name to string")
                 continue
 
 
@@ -102,8 +115,12 @@ def get_cert_object_from_der(der):
     data = base64.b64encode(der).decode("ascii")
     dlm = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----"
     pem = (dlm % data)
-    cert = x509.load_pem_x509_certificate(pem.encode("ascii"),
-                                          default_backend())
+    try:
+        cert = x509.load_pem_x509_certificate(pem.encode("ascii"),
+                                              default_backend())
+    except Exception as ex:
+        LOGGER.debug("unable to parse data using cryptography: %s" % data)
+        raise ex
     return cert
 
 
@@ -121,8 +138,7 @@ class CTclient:
         url = urllib.parse.urljoin(self.logserver,
                                    CTclient.GET_STH)
         ret = get_json_from_url(url, self.timeout)
-        if ret is None:
-            print("unable to get tree size", file=sys.stderr)
+
         return ret
 
     def get_roots(self):
@@ -131,7 +147,7 @@ class CTclient:
         ret = get_json_from_url(url, self.timeout)
         result = []
         if ret is None or "certificates" not in ret:
-            print("unable to get root certificates", file=sys.stderr)
+            LOGGER.error("unable to get root certificates")
             return result
         else:
             for root in ret["certificates"]:
@@ -139,6 +155,8 @@ class CTclient:
                     cert = get_cert_object_from_der(base64.b64decode(root))
                     result.append(cert)
                 except Exception as ex:
+                    LOGGER.error("exception occurred : %s" % str(ex))
+                    LOGGER.error("unable to parse root certificate")
                     continue
             return result
 
@@ -156,8 +174,8 @@ class CTclient:
                 if not (precert_flag is None or pem is None or cert is None):
                     result.append((precert_flag, pem, cert))
         else:
-            print("data from log is None or \"entries\" key is not in data",
-                  file=sys.stderr)
+            LOGGER.error("unable to get entries in properly")
+            LOGGER.debug("return from log server: %s" % str(ret))
         return result
 
     def _parse_first_found_cert_in_tls_encoded_data(self, bytes_data):
@@ -201,9 +219,10 @@ class CTclient:
                     precert_flag = False
                     target_data = rest_of_data
                 else:
-                    print("unknown log entry type", file=sys.stderr)
                     precert_flag = False
                     target_data = b''
+                    LOGGER.error("unknown log_entry_type: %s" %
+                                 str(log_entry_type))
 
                 rawdata, cert = \
                     self._parse_first_found_cert_in_tls_encoded_data(
@@ -212,8 +231,9 @@ class CTclient:
                 pem = base64.b64encode(rawdata).decode("ascii")
 
         except Exception as ex:
-            print(str(ex), file=sys.stderr)
-            print("unable to get certificate", file=sys.stderr)
+            LOGGER.error("except occurred while parsing cert: %s" % str(ex))
+            LOGGER.error("unable to get certificate from entry")
+            LOGGER.debug("%s" % str(entry))
 
         return precert_flag, pem, cert
 
