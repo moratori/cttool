@@ -12,7 +12,7 @@ precert 21837295931541575158308100102794332606782844    2020-04-06 15:26:12     
 precert 21814683825173294305128559027474023930943028    2020-04-06 15:26:15     2020-07-05 15:26:15     CN=Fake LE Intermediate X1      CN=filecoin-monitor.byteark.cn
 precert 21817878784482479703066680225981123633190528    2020-04-06 15:26:14     2020-07-05 15:26:14     CN=Fake LE Intermediate X1      CN=mcbenefits.info
 
-$ ./cttool.py monitor https://ct.googleapis.com/testtube --start 119361290 --end 119361292 --jsonflg
+$ ./cttool.py monitor https://ct.googleapis.com/testtube --start 119361290 --end 119361292 --json
 [
     {
         "cert_type": "precert",
