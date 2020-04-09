@@ -50,9 +50,13 @@ $ ./cttool.py sth https://ct.googleapis.com/testtube
 ## Retrieve Accepted Root Certificates
 
 ```
-$ ./cttool.py roots https://ct.googleapis.com/testtube
-
-(TBD)
+$ ./cttool.py roots https://ct.googleapis.com/testtube/
+CN=TEST UAE Global Root CA G4 E2,O=TEST UAE Government,C=AE
+CN=Dubai Root CA TEST,OU=DESC,O=Dubai Government,L=Dubai,ST=Dubai,C=AE
+CN=A-Trust-Test-nQual-04,OU=A-Trust-Test-nQual-04,O=A-Trust Ges. für Sicherheitssysteme im elektr. Datenverkehr GmbH,C=AT
+CN=Test BRZ CA Root 2017,OU=BRZ CA,O=Bundesrechenzentrum GmbH,C=AT
+...
+(snip)
 ```
 
 # Installtion
