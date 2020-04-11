@@ -2,6 +2,16 @@
 
 A command line tool for certificate transparency log.
 
+# Installtion
+
+please check whether pipenv and python3.7 installed
+
+```
+$ git clone https://github.com/moratori/cttool.git
+$ cd cttool
+$ pipenv install
+```
+
 # Usage
 
 ## Monitor a log server
@@ -110,12 +120,3 @@ $ ./cttool.py add https://ct.cloudflare.com/logs/nimbus2020 full_chain_file
 }
 ```
 
-# Installtion
-
-please check whether pipenv and python3.7 installed
-
-```
-$ git clone https://github.com/moratori/cttool.git
-$ cd cttool
-$ pipenv install
-```
