@@ -7,6 +7,7 @@ A command line tool for certificate transparency log.
 ## Monitor a log server
 
 ```
+$ pipenv shell
 $ ./cttool.py monitor https://ct.googleapis.com/testtube
 precert 21837295931541575158308100102794332606782844    2020-04-06 15:26:12     2020-07-05 15:26:12     CN=Fake LE Intermediate X1      CN=oncafepro.com
 precert 21814683825173294305128559027474023930943028    2020-04-06 15:26:15     2020-07-05 15:26:15     CN=Fake LE Intermediate X1      CN=filecoin-monitor.byteark.cn
@@ -38,6 +39,7 @@ $ ./cttool.py monitor https://ct.googleapis.com/testtube --start 119361290 --end
 ## Retrieve Latest Signed Tree Head
 
 ```
+$ pipenv shell
 $ ./cttool.py sth https://ct.googleapis.com/testtube
 {
     "sha256_root_hash": "9T5jyWtXYaMAzKCozV60CM6iTGeDriH6wMdprTeT+PI=",
@@ -50,6 +52,7 @@ $ ./cttool.py sth https://ct.googleapis.com/testtube
 ## Retrieve Accepted Root Certificates
 
 ```
+$ pipenv shell
 $ ./cttool.py roots https://ct.googleapis.com/testtube/
 CN=TEST UAE Global Root CA G4 E2,O=TEST UAE Government,C=AE
 CN=Dubai Root CA TEST,OU=DESC,O=Dubai Government,L=Dubai,ST=Dubai,C=AE
