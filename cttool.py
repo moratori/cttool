@@ -112,9 +112,15 @@ class Application:
         if ret is not None:
             print(jsn.dumps(ret, indent=4, sort_keys=True))
 
-    def logs(self, timeout=5):
-        logs_list = "https://www.gstatic.com/ct/log_list/v2/all_logs_list.json"
-        ret = get_json_from_url(logs_list, timeout)
+    def logs(self, timeout=5, chrome=False):
+        all_logs_list = \
+            "https://www.gstatic.com/ct/log_list/v2/all_logs_list.json"
+        chrome_logs_list = \
+            "https://www.gstatic.com/ct/log_list/v2/log_list.json"
+
+        logs = chrome_logs_list if chrome else all_logs_list
+
+        ret = get_json_from_url(logs, timeout)
         if ret is not None and "operators" in ret:
             for operator in ret["operators"]:
                 if "logs" in operator:
