@@ -53,7 +53,8 @@ class Application:
             if not json:
                 tmp = line.copy()
                 del tmp["pem"]
-                print("\t".join([str(column) for column in tmp.values()]))
+                print("\t".join([str(column) for column in tmp.values()]),
+                      flush=True)
         if json:
             print(jsn.dumps(result, indent=4, sort_keys=True))
 
