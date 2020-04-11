@@ -112,14 +112,10 @@ class Application:
 
 
 def get_cert_object_from_der(der):
-    data = base64.b64encode(der).decode("ascii")
-    dlm = "-----BEGIN CERTIFICATE-----\n%s\n-----END CERTIFICATE-----"
-    pem = (dlm % data)
     try:
-        cert = x509.load_pem_x509_certificate(pem.encode("ascii"),
-                                              default_backend())
+        cert = x509.load_der_x509_certificate(der, default_backend())
     except Exception as ex:
-        LOGGER.debug("unable to parse data using cryptography: %s" % data)
+        LOGGER.debug("unable to parse data using cryptography: %s" % der)
         raise ex
     return cert
 
