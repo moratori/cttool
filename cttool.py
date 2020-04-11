@@ -75,12 +75,12 @@ class Application:
                         LOGGER.debug("before: %s" % str(before))
                         LOGGER.debug("after: %s" % str(after))
                         break
-                    else:
-                        start = before["tree_size"]
-                        end = after["tree_size"]
-                        if end > start:
-                            self._summarize_certificate(logserver, timeout,
-                                                        start, end, json)
+
+                    start = before["tree_size"]
+                    end = after["tree_size"]
+                    if end > start:
+                        self._summarize_certificate(logserver, timeout,
+                                                    start, end, json)
             except KeyboardInterrupt:
                 pass
 
