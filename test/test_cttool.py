@@ -3,6 +3,9 @@
 import unittest
 import sys
 import os
+import base64
+from cryptography import x509
+from cryptography.hazmat.backends import default_backend
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
@@ -21,58 +24,44 @@ class TestCTclient(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_0_check_precertificate(self):
+    def test_0_parse_entry_to_certificate(self):
         with open(os.path.join(data_dir, "test_0_data"),
                   "r",
                   encoding="ascii") as handle:
             obj = json.load(handle)
-            leaf_input = obj["leaf_input"]
-            self.assertTrue(self.ctclient.check_precertificate(leaf_input))
+            self.assertTrue(self.ctclient.parse_entry_to_certificate(obj))
 
-    def test_1_check_precertificate(self):
+    def test_1_parse_entry_to_certificate(self):
         with open(os.path.join(data_dir, "test_1_data"),
                   "r",
                   encoding="ascii") as handle:
             obj = json.load(handle)
-            leaf_input = obj["leaf_input"]
-            self.assertFalse(self.ctclient.check_precertificate(leaf_input))
+            self.assertTrue(self.ctclient.parse_entry_to_certificate(obj))
 
-    def test_2_parse_cert(self):
-        with open(os.path.join(data_dir, "test_0_data"),
-                  "r",
-                  encoding="ascii") as handle:
-            obj = json.load(handle)
-            extra_data = obj["extra_data"]
-            self.assertTrue(self.ctclient.parse_cert(extra_data))
-
-    def test_3_parse_cert(self):
-        with open(os.path.join(data_dir, "test_1_data"),
-                  "r",
-                  encoding="ascii") as handle:
-            obj = json.load(handle)
-            extra_data = obj["extra_data"]
-            self.assertTrue(self.ctclient.parse_cert(extra_data))
-
-    def test_4_parse_entry_to_certificate(self):
-        with open(os.path.join(data_dir, "test_0_data"),
-                  "r",
-                  encoding="ascii") as handle:
-            obj = json.load(handle)
-            precert_flag, pem, cert = self.ctclient.parse_entry_to_certificate(obj)
-            self.assertIsNotNone(precert_flag)
-            self.assertIsNotNone(cert)
-
-    def test_5_parse_entry_to_certificate(self):
-        with open(os.path.join(data_dir, "test_1_data"),
-                  "r",
-                  encoding="ascii") as handle:
-            obj = json.load(handle)
-            precert_flag, pem, cert = self.ctclient.parse_entry_to_certificate(obj)
-            self.assertIsNotNone(precert_flag)
-            self.assertIsNotNone(cert)
-
-    def test_6_get_certificates(self):
+    def test_2_get_certificates(self):
         certificates = self.ctclient.get_certificates(119191700, 119191708)
         for (flag, pem, cert) in certificates:
             self.assertIsInstance(flag, bool)
+            self.assertTrue(pem)
             self.assertTrue(cert)
+
+    def test_3_get_roots(self):
+        roots = self.ctclient.get_roots()
+        self.assertIsInstance(roots, list)
+
+    def test_4_get_roots(self):
+        roots = self.ctclient.get_sth()
+        self.assertIsInstance(roots, dict)
+
+    def test_5__construct_chain_json(self):
+        path = os.path.join(data_dir, "test_5_data")
+        data = self.ctclient._construct_chain_json(path)
+        self.assertIsInstance(data, dict)
+        for pem in data["chain"]:
+            cert = x509.load_der_x509_certificate(base64.b64decode(pem),
+                                                  default_backend())
+            self.assertIsNotNone(cert)
+
+    def test_6__construct_chain_json(self):
+        path = os.path.join(data_dir, "file_not_found")
+        self.assertIsNone(self.ctclient._construct_chain_json(path))

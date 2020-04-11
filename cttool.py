@@ -5,6 +5,7 @@ import base64
 import time
 import sys
 import urllib.parse
+import re
 import fire
 import requests
 import json as jsn
@@ -28,6 +29,26 @@ def get_json_from_url(url, timeout, params=dict()):
         if (res.status_code != 200 or
                 (not content_type.startswith("application/json") and
                  not content_type.startswith("text/plain"))):
+            LOGGER.error("status code: %s" % str(res.status_code))
+            LOGGER.error("content type: %s" % str(content_type))
+            return None
+        return res.json()
+    except Exception as ex:
+        LOGGER.error("exception occurred: %s" % str(ex))
+        LOGGER.error("unable to get json data from %s" % url)
+        return None
+
+
+def post_json_to_url(url, timeout, data=dict()):
+    try:
+        res = requests.post(url, data=data, timeout=timeout,
+                            headers={'content-type': 'application/json'})
+        content_type = res.headers["content-type"]
+        if (res.status_code != 200 or
+                (not content_type.startswith("application/json") and
+                 not content_type.startswith("text/plain"))):
+            LOGGER.error("status code: %s" % str(res.status_code))
+            LOGGER.error("content type: %s" % str(content_type))
             return None
         return res.json()
     except Exception as ex:
@@ -111,6 +132,12 @@ class Application:
                 LOGGER.error("unable to convert issuer name to string")
                 continue
 
+    def add(self, logserver, full_chainfile, timeout=5):
+        ctclient = CTclient(logserver, timeout)
+        ret = ctclient.add_chain(full_chainfile)
+        if ret is not None:
+            print(jsn.dumps(ret, indent=4, sort_keys=True))
+
 
 def get_cert_object_from_der(der):
     try:
@@ -126,10 +153,41 @@ class CTclient:
     GET_STH = "ct/v1/get-sth"
     GET_ROOTS = "ct/v1/get-roots"
     GET_ENTRIES = "ct/v1/get-entries"
+    ADD_CHAIN = "ct/v1/add-chain"
 
     def __init__(self, logserver, timeout):
         self.logserver = logserver.rstrip("/") + "/"
         self.timeout = timeout
+
+    def _construct_chain_json(self, chainfile):
+        preamble = "-----BEGIN CERTIFICATE-----"
+        postamble = "-----END CERTIFICATE-----"
+        pattern = \
+            "[\r\n]*%s[\r\n]+[a-zA-Z0-9\+/=\r\n ]+[\r\n]+%s[\r\n]*" % (
+                preamble,
+                postamble)
+        try:
+            chain_json = []
+            with open(chainfile, "r", encoding="ascii") as handle:
+                chain = re.findall(pattern, handle.read())
+                for pem in chain:
+                    chain_json.append(pem.strip().
+                                      replace(preamble, "").
+                                      replace(postamble, ""))
+
+            return jsn.dumps(dict(chain=chain_json))
+        except Exception as ex:
+            LOGGER.error("error occurred while constructing chain: %s"
+                         % str(ex))
+            return None
+
+    def add_chain(self, chainfile):
+        chain_json = self._construct_chain_json(chainfile)
+        if chain_json is not None:
+            url = urllib.parse.urljoin(self.logserver,
+                                       CTclient.ADD_CHAIN)
+            ret = post_json_to_url(url, self.timeout, data=chain_json)
+            return ret
 
     def get_sth(self):
         url = urllib.parse.urljoin(self.logserver,
