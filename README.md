@@ -62,6 +62,54 @@ CN=Test BRZ CA Root 2017,OU=BRZ CA,O=Bundesrechenzentrum GmbH,C=AT
 (snip)
 ```
 
+## Show Common Log Server
+```
+$ pipenv shell
+$ ./cttool.py logs --chrome
+Google 'Argon2020' log
+https://ct.googleapis.com/logs/argon2020/
+Google 'Argon2021' log
+https://ct.googleapis.com/logs/argon2021/
+Google 'Argon2022' log
+https://ct.googleapis.com/logs/argon2022/
+Google 'Argon2023' log
+https://ct.googleapis.com/logs/argon2023/
+Google 'Xenon2020' log
+https://ct.googleapis.com/logs/xenon2020/
+Google 'Xenon2021' log
+https://ct.googleapis.com/logs/xenon2021/
+Google 'Xenon2022' log
+https://ct.googleapis.com/logs/xenon2022/
+Google 'Xenon2023' log
+https://ct.googleapis.com/logs/xenon2023/
+Google 'Aviator' log
+https://ct.googleapis.com/aviator/
+Google 'Icarus' log
+https://ct.googleapis.com/icarus/
+Google 'Pilot' log
+https://ct.googleapis.com/pilot/
+Google 'Rocketeer' log
+https://ct.googleapis.com/rocketeer/
+Google 'Skydiver' log
+https://ct.googleapis.com/skydiver/
+Cloudflare 'Nimbus2020' Log
+https://ct.cloudflare.com/logs/nimbus2020/
+...
+```
+
+## Add chain to Logserver
+```
+$ pipenv shell
+$ ./cttool.py add https://ct.cloudflare.com/logs/nimbus2020 full_chain_file
+{
+    "extensions": "",
+    "id": "Xqdz+d9WwOe1Nkh90EngMnqRmgyEoRIShBh1loFxRVg=",
+    "sct_version": 0,
+    "signature": "BAMASDBGAiEAvOmguJr/4cSmYdN3AbTRcdP5uOitAdS0AApF7uB1DrECIQCxSGGhr/3qJlb7lS5hPdHVjgc208nVU5JpnrlVCRIrSg==",
+    "timestamp": 1586616243666
+}
+```
+
 # Installtion
 
 please check whether pipenv and python3.7 installed
