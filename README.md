@@ -4,7 +4,7 @@ A command line tool for certificate transparency log.
 
 # Installation
 
-please check whether pipenv and python3.7 installed in advance.
+please check whether pipenv and python3.7 installed in advance.  
 [Pipenv - installation](https://github.com/pypa/pipenv#installation)
 
 ```
