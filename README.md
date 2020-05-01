@@ -121,3 +121,9 @@ $ ./cttool.py add https://ct.cloudflare.com/logs/nimbus2020 full_chain_file
 }
 ```
 
+## How to run test
+```
+$ pipenv shell
+$ python -m unittest discover ./test/
+```
+
