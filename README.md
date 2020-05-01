@@ -2,9 +2,10 @@
 
 A command line tool for certificate transparency log.
 
-# Installtion
+# Installation
 
-please check whether pipenv and python3.7 installed
+please check whether pipenv and python3.7 installed in advance.
+[Pipenv - installation](https://github.com/pypa/pipenv#installation)
 
 ```
 $ git clone https://github.com/moratori/cttool.git
