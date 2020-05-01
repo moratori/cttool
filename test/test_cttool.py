@@ -56,8 +56,9 @@ class TestCTclient(unittest.TestCase):
     def test_5__construct_chain_json(self):
         path = os.path.join(data_dir, "test_5_data")
         data = self.ctclient._construct_chain_json(path)
-        self.assertIsInstance(data, dict)
-        for pem in data["chain"]:
+        dct = json.loads(data)
+        self.assertIsInstance(dct, dict)
+        for pem in dct["chain"]:
             cert = x509.load_der_x509_certificate(base64.b64decode(pem),
                                                   default_backend())
             self.assertIsNotNone(cert)
