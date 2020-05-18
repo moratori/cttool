@@ -1,4 +1,5 @@
 Pipfile.lock
 *.pyc
 .venv/
+.vscode/
 test/data/
