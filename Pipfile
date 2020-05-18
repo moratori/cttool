@@ -9,6 +9,3 @@ verify_ssl = true
 requests = "==2.23.0"
 cryptography = "==2.9"
 fire = "==0.3.0"
-
-[requires]
-python_version = "3.7"
