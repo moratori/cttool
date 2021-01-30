@@ -81,6 +81,9 @@ class Application:
 
     def monitor(self, logserver, timeout=3, interval=5, json=False,
                 start=None, end=None):
+        """
+        CTログサーバーから定期的に証明書の情報を取得する
+        """
         ctclient = CTclient(logserver, timeout)
         if start is not None and end is not None:
             self._summarize_certificate(logserver, timeout, start, end,
@@ -107,12 +110,18 @@ class Application:
                 pass
 
     def sth(self, logserver, timeout=5):
+        """
+        CTログサーバーの現在のSTHを取得する
+        """
         ctclient = CTclient(logserver, timeout)
         ret = ctclient.get_sth()
         if ret is not None:
             print(jsn.dumps(ret, indent=4, sort_keys=True))
 
     def logs(self, timeout=5, chrome=False, json=False):
+        """
+        CTログサーバーの一覧を取得する
+        """
         all_logs_list = \
             "https://www.gstatic.com/ct/log_list/v2/all_logs_list.json"
         chrome_logs_list = \
@@ -134,6 +143,9 @@ class Application:
                                             log["url"]))
 
     def roots(self, logserver, timeout=5):
+        """
+        CTログサーバーが書き込みを許可しているルート認証局の一覧を取得する
+        """
         ctclient = CTclient(logserver, timeout)
         for root in ctclient.get_roots():
             try:
@@ -144,6 +156,9 @@ class Application:
                 continue
 
     def add(self, logserver, full_chainfile, timeout=5):
+        """
+        証明書をCTログサーバーに書き込む
+        """
         ctclient = CTclient(logserver, timeout)
         ret = ctclient.add_chain(full_chainfile)
         if ret is not None:
