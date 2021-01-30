@@ -8,10 +8,12 @@ import urllib.parse
 import re
 import fire
 import requests
+import binascii
 import json as jsn
 from logging import StreamHandler, basicConfig, getLogger
 from logging import WARNING
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
 
 
@@ -149,7 +151,11 @@ class Application:
         ctclient = CTclient(logserver, timeout)
         for root in ctclient.get_roots():
             try:
-                print(root.issuer.rfc4514_string())
+                sha1_fg = \
+                    binascii.b2a_hex(
+                        root.fingerprint(hashes.SHA1())).decode("utf8").upper()
+                print("SHA1 Fingerprint=%s:%s" %
+                      (sha1_fg, root.issuer.rfc4514_string()))
             except Exception as ex:
                 LOGGER.error("exception occurred: %s" % str(ex))
                 LOGGER.error("unable to convert issuer name to string")
